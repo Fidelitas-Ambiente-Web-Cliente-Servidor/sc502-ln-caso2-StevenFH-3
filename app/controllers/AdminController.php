@@ -25,6 +25,18 @@ class AdminController
         }
         require __DIR__ . '/../views/admin/solicitudes.php';
     }
+
+    //Obtiene las solicitudes por AJAX 
+    public function getSolicitudesJson()
+    {
+        if (!isset($_SESSION['id']) || $_SESSION['rol'] !== 'admin') {
+            echo json_encode([]);
+            return;
+        }
+        $solicitudes = $this->solicitudModel->getPendientes();
+        header('Content-Type: application/json');
+        echo json_encode($solicitudes);
+    }
     
     // Aprobar solicitud
     public function aprobar()
@@ -37,13 +49,28 @@ class AdminController
         $solicitudId = $_POST['id_solicitud'] ?? 0;
         
         try {
-            
-            echo json_encode(['success' => true]);
+            //Obtenemos la solicitud para saber a qué taller pertenece
+            $solicitud = $this->solicitudModel->getById($solicitudId);
+
+            if (!$solicitud || $solicitud['estado'] !== 'pendiente') {
+                echo json_encode(['success' => false, 'error' => 'Solicitud no válida o ya procesada.']);
+                return;
+            }
+
+            //Si descontarCupo() devuelve true, significa que sí había campo y se descontó
+            if ($this->tallerModel->descontarCupo($solicitud['taller_id'])) {
+                //Actualizamos el estado a aprobada
+                $this->solicitudModel->actualizarEstado($solicitudId, 'aprobada');
+                echo json_encode(['success' => true, 'message' => 'Solicitud aprobada y cupo descontado.']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Operación fallida: El taller ya no cuenta con cupos disponibles.']);
+            }
             
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
+
     public function rechazar()
     {
         if (!isset($_SESSION['id']) || $_SESSION['rol'] !== 'admin') {
@@ -53,8 +80,9 @@ class AdminController
         
         $solicitudId = $_POST['id_solicitud'] ?? 0;
         
-        if ($this->solicitudModel->rechazar($solicitudId)) {
-            echo json_encode(['success' => true]);
+        //Usamos el método del modelo para actualizar a rechazada
+        if ($this->solicitudModel->actualizarEstado($solicitudId, 'rechazada')) {
+            echo json_encode(['success' => true, 'message' => 'Solicitud rechazada correctamente.']);
         } else {
             echo json_encode(['success' => false, 'error' => 'Error al rechazar']);
         }

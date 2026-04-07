@@ -13,17 +13,20 @@ $page = $_GET['page'] ?? 'login';
 // ========== RUTAS GET OBTENER DATOS ==========
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
+    //Guardamos la opción en una variable para evitar el error "Undefined index: option" cuando se accede a las vistas normales
+    $option = $_GET['option'] ?? "";
+
     // Obtener listado de talleres
-    if ($_GET['option'] ?? "" == "talleres_json") {
+    if ($option === "talleres_json") {
         $taller = new TallerController();
         $taller->getTalleresJson();
         exit;
     }
 
     // Obtener solicitudes pendientes
-    if ($_GET['option'] ?? "" == "solicitudes_json") {
+    if ($option === "solicitudes_json") {
         $admin = new AdminController();
-        //$admin->getSolicitudesJson();
+        $admin->getSolicitudesJson();
         exit;
     }
 }
